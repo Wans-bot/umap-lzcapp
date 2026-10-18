@@ -1,0 +1,104 @@
+package: cloud.lazycat.app.umap
+version: 3.8.1-4
+name: uMap 地图编辑器
+description: 自托管的地图编辑器：绘制点线面、导入 GPX/GeoJSON/CSV、分享与嵌入地图，数据保存在自己的微服上。
+author: uMap Project
+license: AGPL-3.0
+homepage: https://umap-project.org
+min_os_version: 1.5.0
+permissions:
+  required:
+    - net.internet
+locales:
+  zh-CN:
+    name: uMap 地图编辑器
+    description: 自托管的地图编辑器：绘制点线面、导入 GPX/GeoJSON/CSV、分享与嵌入地图，数据保存在自己的微服上。
+    usage: |
+      uMap 是一个自托管的地图编辑器：在底图上绘制点、线、面，导入 GPX / GeoJSON / CSV / KML 数据，
+      设置样式与弹出内容，再把地图分享或嵌入到其他页面。所有地图数据保存在你自己的微服上。
+
+      首次使用：
+
+      1. 打开应用会直接进入已登录状态：登录页会自动填充并提交审核账号，不需要手输账号密码。
+      2. 界面默认简体中文（简体中文由上游提供，覆盖主导航、登录与编辑工具；
+         部分界面词条上游尚未翻译，仍显示英文）。首页展示最近的地图，点击「创建地图」即可开始绘制。
+
+      审核专用账号（仅在会话失效或退出登录后需要，登录页会自动填充）：
+
+      - 账号：`lazycat`
+      - 密码：`Umapped@Lazycat2026`
+
+      为避免把用户钉死在同一个账号上：登录页右下角提供「使用其他账号登录」按钮，点击后会停用本会话的自动填充；
+      重新启用点「启用自动登录」。
+
+      核心操作：
+
+      - 新建地图：首页点「创建地图」，在地图编辑器里修改标题与描述。
+      - 绘制：左侧工具条提供标记、折线、多边形等工具，点击地图即可绘制；右侧面板可改样式、添加数据图层。
+      - 导入数据：在图层面板点「导入数据」，支持 GPX、GeoJSON、CSV、KML、OSM 等格式；弹出的统一文件窗口
+        可以选择「网盘文件」或「本地文件」，选择网盘文件即从懒猫网盘导入。
+      - 导出与下载：「分享」面板可导出 GeoJSON、GPX、KML、CSV 等格式和 JPG/PNG 图片，
+        「完整备份」导出 .umap 文件；下载时会弹出统一文件窗口，可保存到懒猫网盘目录或本地。
+      - 分享：分享面板提供查看链接、短链接与嵌入 iframe 代码。
+
+      说明与限制：
+
+      - 默认底图为高德地图（中文注记）；如需其他底图，需要网络能够访问对应瓦片服务。
+      - 数据持久化：地图数据库与上传的图标、数据文件保存在应用数据目录，重启与升级不丢。
+      - 实时协作（多人同时编辑同一张图）未启用；同一账号可在多端查看与编辑。
+      - 移动端暂不支持，请使用桌面端（窄屏下部分表格页会横向滚动，未通过三层自检）。
+      - 本应用按上游 AGPL-3.0 许可分发；镜像为上游官方镜像，对应源码见
+        https://github.com/umap-project/umap（tag 3.8.1）。
+  en-US:
+    name: uMap Map Editor
+    description: "Self-hosted map editor: draw points, lines and polygons, import GPX/GeoJSON/CSV, share and embed maps, with all data stored on your own microserver."
+    usage: |
+      uMap is a self-hosted map editor: draw points, lines and polygons on a base map,
+      import GPX / GeoJSON / CSV / KML data, style features and popups, then share or
+      embed your maps. All map data stays on your own microserver.
+
+      Getting started:
+
+      1. Open the app and you are already signed in: the login page auto-fills and
+         submits the review account, no typing needed.
+      2. The UI opens in Simplified Chinese by default (the upstream Simplified
+         Chinese translation covers the main navigation, login and editing tools;
+         some labels are not translated upstream yet and remain in English). The
+         home page lists recent maps; click "Create map" to start drawing.
+
+      Review credentials (only needed if the session expired or you signed out; the
+      login page auto-fills them):
+
+      - User: `lazycat`
+      - Password: `Umapped@Lazycat2026`
+
+      To avoid being pinned to one account there is a "使用其他账号登录" (use another
+      account) control at the bottom-right of the login page; it disables the auto-fill
+      for the session. Re-enable with "启用自动登录".
+
+      Common tasks:
+
+      - Create a map: click "Create map" on the home page, then edit title and
+        description in the editor.
+      - Draw: the left toolbar offers marker, polyline and polygon tools; click on
+        the map to draw. The right panel edits styles and data layers.
+      - Import: in the layer panel choose "Import data" and pick GPX, GeoJSON, CSV,
+        KML or OSM files. The unified file dialog offers "Cloud files" or "Local
+        files"; choosing cloud files imports from your microserver drive.
+      - Export and download: the share panel exports GeoJSON, GPX, KML, CSV and
+        JPG/PNG images; "full backup" exports a .umap file. The unified file dialog
+        lets you save to a network drive folder or locally.
+      - Share: the share panel provides view links, short links and iframe embed code.
+
+      Notes and limits:
+
+      - The default base map is AMap (Chinese labels); other tile providers require
+        network access to their tile servers.
+      - Persistence: the map database and uploaded icons/data files live in the app
+        data directory and survive restarts and upgrades.
+      - Real-time collaboration is disabled; the same account can view and edit from
+        multiple devices.
+      - Mobile is not supported at this time; please use a desktop browser
+        (some table pages require horizontal scrolling on narrow screens).
+      - Distributed under the upstream AGPL-3.0 license; the image is the upstream
+        official image, source at https://github.com/umap-project/umap (tag 3.8.1).

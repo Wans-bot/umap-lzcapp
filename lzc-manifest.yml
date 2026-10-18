@@ -1,0 +1,159 @@
+application:
+  subdomain: umap
+  upstreams:
+    - location: /
+      backend: http://proxy.cloud.lazycat.app.umap.lzcapp:80
+      disable_trim_location: true
+  health_check:
+    # 首装需要初始化 PostGIS 数据库、收集静态文件并跑迁移，给足启动等待时间。
+    test_url: http://proxy.cloud.lazycat.app.umap.lzcapp:80/
+    start_period: 600s
+    timeout: 10s
+  injects:
+    # ── 网盘文件桥接（request 阶段）──────────────────────────────────────
+    # 官方《自动拦截文件选择器》要求 request 与 browser 两侧成对配置；
+    # /__lazycat_file_bridge/* 转发到 file.<boxdomain>，让「保存到网盘」真正落盘。
+    - id: lazycat-file-bridge
+      'on': request
+      auth_required: false
+      when:
+        - /__lazycat_file_bridge/*
+      do:
+        - src: >
+            const bridgePrefix = "/__lazycat_file_bridge";
+
+            const requestHost = String(ctx.request.host ||
+            "").split(":")[0].toLowerCase();
+
+            const firstDot = requestHost.indexOf(".");
+
+            const method = String(ctx.request.method || "").toUpperCase();
+
+            if (firstDot <= 0 || !requestHost.endsWith(".heiyu.space") ||
+            !["GET", "HEAD", "PUT"].includes(method)) {
+              ctx.response.send(["GET", "HEAD", "PUT"].includes(method) ? 400 : 405, "Invalid LazyCat file bridge request");
+              return;
+            }
+
+            const boxDomain = requestHost.slice(firstDot + 1);
+
+            ctx.headers.del("Origin");
+
+            ctx.headers.del("Referer");
+
+            ctx.proxy.to("https://file." + boxDomain, { path: "/files/home" +
+            ctx.request.path.slice(bridgePrefix.length), query:
+            ctx.request.raw_query, use_target_host: true, timeout_ms: 120000,
+            on_fail: "error" });
+    # ── 官方网盘文件选择器（browser 阶段）────────────────────────────────
+    # uMap 的「导入数据」是 <input type=file>，导出（GeoJSON/GPX/KML/CSV/图片）是
+    # blob 下载链接，两类入口交给官方选择器接管。脚本取自官方页面
+    # （sha256 4da22e7d…恒定，随包分发在 content/lazycat-injects/）。
+    - id: open-save-chooser
+      'on': browser
+      when:
+        - /*
+      do:
+        - src: >-
+            file:///lzcapp/pkg/content/lazycat-injects/lzc-file-chooser-inject.js
+          params:
+            diskRoot: /_lzc/files/home
+            fileBridgeRoot: /__lazycat_file_bridge
+            fallbackMime: application/octet-stream
+            locale: auto
+            hooks:
+              fileSystemAccess: true
+              fileInput: true
+              downloadAnchor: true
+    # ── 普通 HTTP 下载桥接（browser 阶段，自写脚本）──────────────────────
+    # uMap 的「完整备份」与图层下载是 <a href="/.../download/" download> 形式的
+    # 普通 HTTP 下载，官方选择器只接管 blob:/data: 链接。本脚本在点击时先同源
+    # fetch 成 Blob，再触发一次 blob 下载，交给官方选择器统一处理（可保存到网盘）。
+    - id: umap-download-bridge
+      'on': browser
+      when:
+        - /*
+      do:
+        - src: >-
+            file:///lzcapp/pkg/content/lazycat-injects/umap-download-bridge.js
+    # ── 免密登录（browser 阶段，自写脚本）────────────────────────────────
+    # uMap 自带账号体系（管理员由启动种子脚本创建）。在登录页自动填充并提交一次；
+    # 右下角提供「使用其他账号登录 / 启用自动登录」控件，避免把用户钉死在同一个账号上。
+    - id: umap-login-autofill
+      'on': browser
+      auth_required: false
+      when:
+        - /zh/login*
+        - /en/login*
+        - /zh-tw/login*
+      do:
+        - src: >-
+            file:///lzcapp/pkg/content/lazycat-injects/umap-login-autofill.js
+          params:
+            user: lazycat
+            password: Umapped@Lazycat2026
+services:
+  db:
+    image: registry.lazycat.cloud/wans/postgis/postgis:0a0ae8a65098cb00
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=umap_lzc_db_2026
+      - POSTGRES_DB=umap
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 300s
+    binds:
+      - "/lzcapp/var/db:/var/lib/postgresql/data"
+  # 注意：服务不能命名为 app —— 平台内置网关容器固定占用 <appid>-app-1/服务名 app，
+  # 命名冲突会让安装失败或顶掉注入网关；业务主服务按应用名命名（与 wavelog 同做法）。
+  umap:
+    image: registry.lazycat.cloud/wans/umap/umap:da00c04772aab154
+    depends_on:
+      - db
+    environment:
+      - TZ=Asia/Shanghai
+      - STATIC_ROOT=/srv/umap/static
+      - MEDIA_ROOT=/srv/umap/uploads
+      - DATABASE_URL=postgis://postgres:umap_lzc_db_2026@db.cloud.lazycat.app.umap.lzcapp:5432/umap
+      # 部署时由平台替换为应用真实域名（不要永久保存该值）
+      - SITE_URL=https://${LAZYCAT_APP_DOMAIN}/
+      - CSRF_TRUSTED_ORIGINS=https://${LAZYCAT_APP_DOMAIN}
+      - ENABLE_ACCOUNT_LOGIN=1
+      - UMAP_SETTINGS=/lzcapp/pkg/content/umap/umap.conf
+      - AJAX_PROXY_CACHE_DIR=/lzcapp/cache/umap-proxy-cache
+      - LZC_ADMIN_USER=lazycat
+      - LZC_ADMIN_PASS=Umapped@Lazycat2026
+      - LZC_ADMIN_MAIL=admin@example.com
+    # 【2026-10-14】不用 setup_script：误踩历史坑（lzcinit 首装交接 panic）。
+    # 自持启动链（wavelog/misago 同模式）：/bin/sh boot.sh → collectstatic / 等库 /
+    # 迁移 / 种子数据（管理员与默认瓦片图层）→ exec uvicorn。
+    entrypoint: /bin/sh
+    command: /lzcapp/pkg/content/init/boot.sh
+    binds:
+      - "/lzcapp/var/umap/uploads:/srv/umap/uploads"
+      - "/lzcapp/var/umap/static:/srv/umap/static"
+    healthcheck:
+      test: ["CMD-SHELL", "/venv/bin/python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 600s
+  proxy:
+    image: registry.lazycat.cloud/wans/library/nginx:098fb79c84151799
+    depends_on:
+      - umap
+    entrypoint: /bin/sh
+    command: /lzcapp/pkg/content/nginx/start.sh
+    binds:
+      - "/lzcapp/var/umap/static:/static"
+      - "/lzcapp/var/umap/uploads:/data"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/static/umap/favicons/icon-192.png || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
